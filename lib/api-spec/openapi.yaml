@@ -1,0 +1,548 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: ClipForge API - AI-powered YouTube to Shorts pipeline
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: jobs
+    description: Video processing jobs
+  - name: clips
+    description: Generated short clips
+  - name: uploads
+    description: Social media uploads
+  - name: accounts
+    description: Social media accounts
+  - name: stats
+    description: Dashboard statistics
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /jobs:
+    get:
+      operationId: listJobs
+      tags: [jobs]
+      summary: List all processing jobs
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, downloading, transcribing, analyzing, clipping, done, failed]
+      responses:
+        "200":
+          description: List of jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Job"
+    post:
+      operationId: createJob
+      tags: [jobs]
+      summary: Create a new video processing job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateJobBody"
+      responses:
+        "201":
+          description: Job created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+
+  /jobs/{jobId}:
+    get:
+      operationId: getJob
+      tags: [jobs]
+      summary: Get job details and status
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Job details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "404":
+          description: Job not found
+    delete:
+      operationId: deleteJob
+      tags: [jobs]
+      summary: Delete a job and its clips
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /jobs/{jobId}/process:
+    post:
+      operationId: processJob
+      tags: [jobs]
+      summary: Trigger AI processing for a job
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Processing started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+
+  /jobs/{jobId}/clips:
+    get:
+      operationId: getJobClips
+      tags: [clips]
+      summary: Get all clips for a job
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of clips
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Clip"
+
+  /clips:
+    get:
+      operationId: listClips
+      tags: [clips]
+      summary: List all clips
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [ready, uploading, uploaded, failed]
+      responses:
+        "200":
+          description: List of clips
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Clip"
+
+  /clips/{clipId}:
+    get:
+      operationId: getClip
+      tags: [clips]
+      summary: Get clip details
+      parameters:
+        - name: clipId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Clip details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Clip"
+    patch:
+      operationId: updateClip
+      tags: [clips]
+      summary: Update clip title or description
+      parameters:
+        - name: clipId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateClipBody"
+      responses:
+        "200":
+          description: Updated clip
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Clip"
+    delete:
+      operationId: deleteClip
+      tags: [clips]
+      summary: Delete a clip
+      parameters:
+        - name: clipId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /clips/{clipId}/upload:
+    post:
+      operationId: uploadClip
+      tags: [uploads]
+      summary: Upload a clip to selected platforms
+      parameters:
+        - name: clipId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadClipBody"
+      responses:
+        "200":
+          description: Upload result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadResult"
+
+  /accounts:
+    get:
+      operationId: listAccounts
+      tags: [accounts]
+      summary: List connected social media accounts
+      responses:
+        "200":
+          description: List of accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Account"
+    post:
+      operationId: createAccount
+      tags: [accounts]
+      summary: Add a social media account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAccountBody"
+      responses:
+        "201":
+          description: Account added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Account"
+
+  /accounts/{accountId}:
+    delete:
+      operationId: deleteAccount
+      tags: [accounts]
+      summary: Remove a social media account
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /stats/dashboard:
+    get:
+      operationId: getDashboardStats
+      tags: [stats]
+      summary: Get dashboard overview statistics
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /stats/recent-activity:
+    get:
+      operationId: getRecentActivity
+      tags: [stats]
+      summary: Get recent activity feed
+      responses:
+        "200":
+          description: Recent activity
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityItem"
+
+  /stats/uploads-by-platform:
+    get:
+      operationId: getUploadsByPlatform
+      tags: [stats]
+      summary: Get upload counts grouped by platform
+      responses:
+        "200":
+          description: Uploads per platform
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlatformUploadCount"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required: [status]
+
+    Job:
+      type: object
+      properties:
+        id:
+          type: integer
+        youtubeUrl:
+          type: string
+        videoTitle:
+          type: string
+          nullable: true
+        videoThumbnail:
+          type: string
+          nullable: true
+        videoDuration:
+          type: integer
+          nullable: true
+          description: Duration in seconds
+        status:
+          type: string
+          enum: [pending, downloading, transcribing, analyzing, clipping, done, failed]
+        errorMessage:
+          type: string
+          nullable: true
+        clipsCount:
+          type: integer
+        uploadedCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, youtubeUrl, status, clipsCount, uploadedCount, createdAt, updatedAt]
+
+    CreateJobBody:
+      type: object
+      properties:
+        youtubeUrl:
+          type: string
+      required: [youtubeUrl]
+
+    Clip:
+      type: object
+      properties:
+        id:
+          type: integer
+        jobId:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        startTime:
+          type: number
+          description: Start time in seconds
+        endTime:
+          type: number
+          description: End time in seconds
+        duration:
+          type: number
+          description: Duration in seconds
+        filePath:
+          type: string
+          nullable: true
+        thumbnailPath:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [ready, uploading, uploaded, failed]
+        uploadedPlatforms:
+          type: array
+          items:
+            type: string
+            enum: [youtube, instagram, tiktok]
+        aiScore:
+          type: number
+          nullable: true
+          description: AI quality/engagement score 0-100
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, jobId, title, description, startTime, endTime, duration, status, uploadedPlatforms, createdAt]
+
+    UpdateClipBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+
+    UploadClipBody:
+      type: object
+      properties:
+        platforms:
+          type: array
+          items:
+            type: string
+            enum: [youtube, instagram, tiktok]
+      required: [platforms]
+
+    UploadResult:
+      type: object
+      properties:
+        clipId:
+          type: integer
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              platform:
+                type: string
+              success:
+                type: boolean
+              url:
+                type: string
+                nullable: true
+              error:
+                type: string
+                nullable: true
+            required: [platform, success]
+      required: [clipId, results]
+
+    Account:
+      type: object
+      properties:
+        id:
+          type: integer
+        platform:
+          type: string
+          enum: [youtube, instagram, tiktok]
+        accountName:
+          type: string
+        isConnected:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, platform, accountName, isConnected, createdAt]
+
+    CreateAccountBody:
+      type: object
+      properties:
+        platform:
+          type: string
+          enum: [youtube, instagram, tiktok]
+        accountName:
+          type: string
+        credentials:
+          type: object
+          description: Platform-specific credentials (stored encrypted)
+          additionalProperties: true
+      required: [platform, accountName, credentials]
+
+    DashboardStats:
+      type: object
+      properties:
+        totalJobs:
+          type: integer
+        totalClips:
+          type: integer
+        totalUploads:
+          type: integer
+        clipsReady:
+          type: integer
+        jobsProcessing:
+          type: integer
+        connectedAccounts:
+          type: integer
+      required: [totalJobs, totalClips, totalUploads, clipsReady, jobsProcessing, connectedAccounts]
+
+    ActivityItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [job_created, job_done, clip_created, clip_uploaded, job_failed]
+        description:
+          type: string
+        entityId:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, type, description, entityId, createdAt]
+
+    PlatformUploadCount:
+      type: object
+      properties:
+        platform:
+          type: string
+        count:
+          type: integer
+      required: [platform, count]
